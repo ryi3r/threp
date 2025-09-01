@@ -1,9 +1,9 @@
 from math import ceil
 from time import localtime
 
-from threp.utils import unsigned_int, unsigned_char, float_, filter_constant_frame, true_frame, correct_true_frame, entry
+from threp.utils import unsigned_int, unsigned_char, float_, true_frame, correct_true_frame, entry
 from threp.common import decode, decompress
-from threp.static import work_attr, skeys, kkeys, oldwork_magicnumber_flc, newwork_magicnumber_flc, old_types_dic
+from threp.static import FrameKey, work_attr, oldwork_magicnumber_flc, newwork_magicnumber_flc, old_types_dic
 from threp.type import get_alltypes, format_types
 
 def threp_decodedata(buffer):
@@ -159,12 +159,7 @@ def hmxrep_cut(dat):
     rep_info['date'] = f"20{date[6:8]}/{date[:2]}/{date[3:5]}".strip()
 
     rep_info['stage_score'] = []
-    rep_info['screen_action'] = []
-    rep_info['keyboard_action'] = []
-    rep_info['z_frame'] = []
-    rep_info['x_frame'] = []
-    rep_info['c_frame'] = []
-    rep_info['shift_frame'] = []
+    rep_info['actions'] = []
     total_frame_count=0
 
     for i in range(7):
@@ -172,42 +167,16 @@ def hmxrep_cut(dat):
         if stage_offset != 0:
             rep_info['stage_score'].append(unsigned_int(decodedata, stage_offset))
             replay_offset=stage_offset + 0x10
-            stage_replaydata=[]
             i = 0x0
             frame = unsigned_int(decodedata, replay_offset + i)
             while frame != 9999999:
                 # 检测 z x c shift
                 left_hand_flag = unsigned_int(decodedata, replay_offset + i + 0x4) & 0xf
-                frame_dic = {
-                    1: 'z_frame',
-                    2: 'x_frame',
-                    4: 'shift_frame'
-                }
-                if left_hand_flag in frame_dic:
-                    rep_info[frame_dic[left_hand_flag]].append(frame)
                 press = (unsigned_int(decodedata, replay_offset + i + 0x4) >> 4) & 0xf
                 i += 0x8
-                stage_replaydata.append([frame, press])
+                rep_info['actions'].append((frame, FrameKey(press, left_hand_flag)))
                 frame = unsigned_int(decodedata, replay_offset + i)
-            kkey = []
-            skey = []
-            frame_count = 0
-            for i in range(len(stage_replaydata)-1):
-                for _ in range(stage_replaydata[i][0], stage_replaydata[i+1][0]):
-                    if frame_count % 60 == 0:
-                        skey.append(f'[{(frame_count // 60):<6}]')
-                    framekey = stage_replaydata[i][1]
-                    skey.append(skeys[framekey])
-                    kkey.append(kkeys[framekey])
-                    if (frame_count + 1) % 60 == 0:
-                        rep_info['screen_action'].append(''.join(skey))
-                        rep_info['keyboard_action'].append(kkey)
-                        skey = []
-                        kkey = []
-                    frame_count += 1
-                    total_frame_count += 1
-            rep_info['screen_action'].append(''.join(skey))
-            rep_info['keyboard_action'].append(kkey)
+                total_frame_count += 1
 
     rep_info['error'] = []
     rep_info['frame_count'] = total_frame_count
@@ -389,12 +358,7 @@ def yymrep_cut(dat):
 
         stage_offsets.append(stage_end)
 
-    rep_info['screen_action'] = []
-    rep_info['keyboard_action'] = []
-    rep_info['z_frame'] = []
-    rep_info['x_frame'] = []
-    rep_info['c_frame'] = []
-    rep_info['shift_frame'] = []
+    rep_info['actions'] = []
     total_frame_count = 0
 
     for i in range(len(stage_offsets)-1):
@@ -406,31 +370,13 @@ def yymrep_cut(dat):
             if j % 60 == 0:
                 skey.append(f'[{(j // 60):<6}]')
             framekey = unsigned_int(decodedata, start + j * 4) >> 4 & 0xf
-            skey.append(skeys[framekey])
-            kkey.append(kkeys[framekey])
-            if (j + 1) % 60 == 0:
-                rep_info['screen_action'].append(''.join(skey))
-                rep_info['keyboard_action'].append(kkey)
-                skey = []
-                kkey = []
-            total_frame_count += 1
             # 检测 z x c shift
             left_hand_flag = unsigned_int(decodedata, start + j * 4) & 0xf
-            frame_dic = {
-                1: 'z_frame',
-                2: 'x_frame',
-                4: 'shift_frame'
-            }
-            if left_hand_flag in frame_dic:
-                rep_info[frame_dic[left_hand_flag]].append(total_frame_count)
-        rep_info['screen_action'].append(''.join(skey))
-        rep_info['keyboard_action'].append(kkey)
+            rep_info['actions'].append((total_frame_count, FrameKey(framekey, left_hand_flag)))
+            total_frame_count += 1
 
     rep_info['error'] = []
     rep_info['frame_count'] = total_frame_count
-    rep_info['z_frame'] = filter_constant_frame(rep_info['z_frame'])
-    rep_info['x_frame'] = filter_constant_frame(rep_info['x_frame'])
-    rep_info['shift_frame'] = filter_constant_frame(rep_info['shift_frame'])
 
     return rep_info
 
@@ -526,51 +472,22 @@ def yycrep_cut(dat):
 
         stage_offsets.append(stage_end)
 
-    rep_info['screen_action'] = []
-    rep_info['keyboard_action'] = []
-    rep_info['z_frame'] = []
-    rep_info['x_frame'] = []
-    rep_info['c_frame'] = []
-    rep_info['shift_frame'] = []
-
+    rep_info['actions'] = []
     total_frame_count=0
 
     for i in range(len(stage_offsets) - 1):
         start = stage_offsets[i] + 0x20
         frame = int((stage_offsets[i + 1] - stage_offsets[i] - 0x20) / 2)
-        skey = []
-        kkey = []
         for j in range(frame):
-            if (j % 60 == 0):
-                skey.append(f'[{(j // 60):<6}]')
             framekey = unsigned_int(decodedata, start + j * 2) >> 4 & 0xf
-            skey.append(skeys[framekey])
-            kkey.append(kkeys[framekey])
-            if ((j + 1) % 60 == 0):
-                rep_info['screen_action'].append(''.join(skey))
-                rep_info['keyboard_action'].append(kkey)
-                skey = []
-                kkey = []
-            total_frame_count+=1
             # 检测 z x c shift
             left_hand_flag = unsigned_int(decodedata, start + j * 2) & 0xf
-            frame_dic = {
-                1: 'z_frame',
-                2: 'x_frame',
-                4: 'shift_frame'
-            }
-            if left_hand_flag in frame_dic:
-                rep_info[frame_dic[left_hand_flag]].append(total_frame_count)
-        rep_info['screen_action'].append(''.join(skey))
-        rep_info['keyboard_action'].append(kkey)
+            rep_info['actions'].append((total_frame_count, FrameKey(framekey, left_hand_flag)))
+            total_frame_count+=1
 
     rep_info['error'] = []
 
     rep_info['frame_count'] = total_frame_count
-
-    rep_info['z_frame'] = filter_constant_frame(rep_info['z_frame'])
-    rep_info['x_frame'] = filter_constant_frame(rep_info['x_frame'])
-    rep_info['shift_frame'] = filter_constant_frame(rep_info['shift_frame'])
 
     return rep_info
 
@@ -646,12 +563,7 @@ def hyzrep_cut(dat):
                 stage_offsets.append(stage_offset)
         stage_offsets.append(stage_end)
 
-    rep_info['screen_action'] = []
-    rep_info['keyboard_action'] = []
-    rep_info['z_frame'] = []
-    rep_info['x_frame'] = []
-    rep_info['c_frame'] = []
-    rep_info['shift_frame'] = []
+    rep_info['actions'] = []
     total_frame_count = 0
 
     for i in range(len(stage_offsets) - 1):
@@ -660,34 +572,14 @@ def hyzrep_cut(dat):
         skey = []
         kkey = []
         for j in range(frame):
-            if j % 60 == 0:
-                skey.append(f'[{(j // 60):<6}]')
             framekey = unsigned_int(decodedata, start + j * 2) >> 4 & 0xf
-            skey.append(skeys[framekey])
-            kkey.append(kkeys[framekey])
-            if (j + 1) % 60 == 0:
-                rep_info['screen_action'].append(''.join(skey))
-                rep_info['keyboard_action'].append(kkey)
-                skey = []
-                kkey = []
-            total_frame_count += 1
             # 检测 z x c shift
             left_hand_flag = unsigned_int(decodedata, start + j * 2) & 0xf
-            frame_dic = {
-                1: 'z_frame',
-                2: 'x_frame',
-                4: 'shift_frame'
-            }
-            if left_hand_flag in frame_dic:
-                rep_info[frame_dic[left_hand_flag]].append(total_frame_count)
-        rep_info['screen_action'].append(''.join(skey))
-        rep_info['keyboard_action'].append(kkey)
+            rep_info['actions'].append((total_frame_count, FrameKey(framekey, left_hand_flag)))
+            total_frame_count += 1
 
     rep_info['error'] = []
     rep_info['frame_count'] = total_frame_count
-    rep_info['z_frame'] = filter_constant_frame(rep_info['z_frame'])
-    rep_info['x_frame'] = filter_constant_frame(rep_info['x_frame'])
-    rep_info['shift_frame'] = filter_constant_frame(rep_info['shift_frame'])
 
     return rep_info
 
@@ -718,93 +610,71 @@ def threp_output(info, work):
 
     output['stage_score'] = [info['stages'][i]['score'] * work_attr[work]['score_rate'] for i in range(stage)]
 
-    output['screen_action'] = []
-    output['keyboard_action'] = []
-    output['z_frame'] = []
-    output['x_frame'] = []
-    output['c_frame'] = []
-    output['shift_frame'] = []
+    output['actions'] = []
     total_frame_count = 0
 
     # 文花帖DS的rep
     if work in ['125']:
         for l in range(stage):
-            skey, kkey = [], []
             stage_info = info['stages'][l]
             replaydata = stage_info['replay']
             replaydata.append(0x00)
             frame = stage_info['frame']
             for i in range(frame):
-                if i % 60 == 0:
-                    skey.append(f'[{(i // 60):<6}]')
                 framekey = unsigned_int(replaydata, i * 3) >> 3 & 0xf
-                skey.append(skeys[framekey])
-                kkey.append(kkeys[framekey])
-                if (i + 1) % 60 == 0:
-                    output['screen_action'].append(''.join(skey))
-                    output['keyboard_action'].append(kkey)
-                    skey, kkey = [], []
-                total_frame_count += 1
                 # 检测 z x c shift
                 left_hand_flag = unsigned_int(replaydata, i * 3) >> 8 & 0xf
-                if left_hand_flag == 1:
-                    output['z_frame'].append(total_frame_count)
-                if left_hand_flag == 2:
-                    output['x_frame'].append(total_frame_count)
-                if left_hand_flag == 4:
-                    output['shift_frame'].append(total_frame_count)
-            output['screen_action'].append(''.join(skey))
-            output['keyboard_action'].append(kkey)
+                output['actions'].append((total_frame_count, FrameKey(framekey, left_hand_flag)))
+                total_frame_count += 1
     else:
         for l in range(stage):
-            skey, kkey = [], []
             stage_info = info['stages'][l]
             replaydata = stage_info['replay']
             frame = stage_info['frame']
             for i in range(frame):
-                if i % 60 == 0:
-                    skey.append(f'[{(i // 60):<6}]')
                 framekey = unsigned_int(replaydata, i * 6) >> 4 & 0xf
-                skey.append(skeys[framekey])
-                kkey.append(kkeys[framekey])
-                if (i + 1) % 60 == 0:
-                    output['screen_action'].append(''.join(skey))
-                    output['keyboard_action'].append(kkey)
-                    skey, kkey = [], []
-                total_frame_count += 1
                 # 检测 z x c shift
                 left_hand_flag = unsigned_int(replaydata, i * 6) >> 16 & 0xf
                 c_flag = unsigned_int(replaydata, i * 6) >> 24 & 0xf
                 # 文花帖
                 if work in ['95']:
-                    if left_hand_flag == 2:
-                        output['z_frame'].append(total_frame_count)
-                    if left_hand_flag == 1:
-                        output['x_frame'].append(total_frame_count)
-                    if left_hand_flag == 5:
-                        output['shift_frame'].append(total_frame_count)
+                    #if left_hand_flag == 2:
+                        #output['z_frame'].append(total_frame_count)
+                    #if left_hand_flag == 1:
+                        #output['x_frame'].append(total_frame_count)
+                    # i honestly doubt it's 5, if it's a bitmask then its 1 | 4 so left + shift?
+                    # so same shit it shouldn't affect anything
+                    #if left_hand_flag == 5:
+                        #output['shift_frame'].append(total_frame_count)
+                    # assume it's the normal data, since it (appears) to be a bitmask
+                    output['actions'].append((total_frame_count, FrameKey(framekey, left_hand_flag)))
                 else:
-                    if left_hand_flag == 1:
-                        output['z_frame'].append(total_frame_count)
-                    if left_hand_flag == 2:
-                        output['x_frame'].append(total_frame_count)
+                    #if left_hand_flag == 1:
+                        #output['z_frame'].append(total_frame_count)
+                    #if left_hand_flag == 2:
+                        #output['x_frame'].append(total_frame_count)
                     # 大战争
-                    if work in ['128']:
-                        if c_flag == 2:
-                            output['c_frame'].append(total_frame_count)
+                    # 10 & 2 > 0 so it's the same, won't matter here
+                    #if work in ['128']:
+                        #if c_flag == 2:
+                            #output['c_frame'].append(total_frame_count)
                     # 神灵庙 辉针城 天邪鬼 绀珠传 天空璋
-                    elif work in ['13', '14', '143', '15', '16']:
-                        if c_flag == 10:
-                            output['c_frame'].append(total_frame_count)
+                    #elif work in ['13', '14', '143', '15', '16']:
+                        #if c_flag == 10:
+                            #output['c_frame'].append(total_frame_count)
                     # 风神录
-                    if work in ['10']:
-                        if left_hand_flag == 4:
-                            output['shift_frame'].append(total_frame_count)
-                    else:
-                        if left_hand_flag == 8:
-                            output['shift_frame'].append(total_frame_count)
-            output['screen_action'].append(''.join(skey))
-            output['keyboard_action'].append(kkey)
+                    #if work in ['10']:
+                        #if left_hand_flag == 4:
+                            #output['shift_frame'].append(total_frame_count)
+                    #else:
+                        #if left_hand_flag == 8:
+                            #output['shift_frame'].append(total_frame_count)
+                    if work not in ['10'] and (left_hand_flag & 8) > 0 and (left_hand_flag & 4) <= 0:
+                        print("clipping flag &8 to |4|8")
+                        left_hand_flag |= 4
+                    output['actions'].append((total_frame_count, FrameKey(framekey, left_hand_flag, c_flag)))
+                    
+                total_frame_count += 1
 
     output['frame_count'] = total_frame_count
 

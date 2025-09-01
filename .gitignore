@@ -52,3 +52,6 @@ Temporary Items
 encode.py
 generate_tst.py
 !requirements.txt
+
+build
+threp.egg-info

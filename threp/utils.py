@@ -28,12 +28,6 @@ def entry(file):
         buffer[:len(_buffer)] = _buffer
     return buffer
 
-# 过滤按住的连续帧为按下帧
-# 只用于shift z x
-# 妖妖梦 永夜抄 花映冢
-def filter_constant_frame(frame_list):
-    return [frame for i, frame in enumerate(frame_list) if i == 0 or (frame != frame_list[i-1]+1)]
-
 # 根据长度获取正确的帧数
 def true_frame(llength):
     frame = floor(llength / (6 + 1/30))

@@ -1,7 +1,94 @@
 from collections import defaultdict
 
-skeys = ['○', '↑', '↓',  '↓',  '←',  '↖',   '↙',    '↖',    '→',  '↗',   '↘',    '↗',    '←',    '↖',      '↙',      '↖']
-kkeys = ['○', '↑', '↓', '↑↓', '←', '↑←', '↓←', '↑↓←', '→', '↑→', '↓→', '↑↓→', '←→', '↑←→', '↓←→', '←↓←→']
+#skeys = ['○', '↑', '↓',  '↓',  '←',  '↖',   '↙',    '↖',    '→',  '↗',   '↘',    '↗',    '←',    '↖',      '↙',      '↖']
+#kkeys = ['○', '↑', '↓', '↑↓', '←', '↑←', '↓←', '↑↓←', '→', '↑→', '↓→', '↑↓→', '←→', '↑←→', '↓←→', '←↓←→']
+#          0    1    2     3    4    5     6      7     8     9    10     11    12    13    14     15
+
+class FrameKey():
+    mask = 0
+    special_mask = 0
+    c_mask = 0
+
+    NONE = 0
+    UP = 1
+    DOWN = 2
+    UP_DOWN = 3
+    LEFT = 4
+    UP_LEFT = 5
+    DOWN_LEFT = 6
+    UP_DOWN_LEFT = 7
+    RIGHT = 8
+    UP_RIGHT = 9
+    DOWN_RIGHT = 10
+    UP_DOWN_RIGHT = 11
+    LEFT_RIGHT = 12
+    UP_LEFT_RIGHT = 13
+    DOWN_LEFT_RIGHT = 14
+    UP_DOWN_LEFT_RIGHT = 15
+
+    Z = 1 << 0
+    X = 1 << 1
+    SHIFT = 1 << 2
+
+    C = 1 << 1
+
+    def __init__(self, _mask, _sp_mask, _c_mask = 0):
+        self.mask = _mask
+        self.special_mask = _sp_mask
+        self.c_mask = _c_mask
+
+    def is_up(self):
+        return self.mask == self.UP or \
+                self.mask == self.UP_DOWN or \
+                self.mask == self.UP_LEFT or \
+                self.mask == self.UP_DOWN_LEFT or \
+                self.mask == self.UP_RIGHT or \
+                self.mask == self.UP_DOWN_RIGHT or \
+                self.mask == self.UP_LEFT_RIGHT or \
+                self.mask == self.UP_DOWN_LEFT_RIGHT
+    
+    def is_down(self):
+        return self.mask == self.DOWN or \
+                self.mask == self.UP_DOWN or \
+                self.mask == self.DOWN_LEFT or \
+                self.mask == self.UP_DOWN_LEFT or \
+                self.mask == self.DOWN_RIGHT or \
+                self.mask == self.UP_DOWN_RIGHT or \
+                self.mask == self.DOWN_LEFT_RIGHT or \
+                self.mask == self.UP_DOWN_LEFT_RIGHT
+    
+    def is_left(self):
+        return self.mask == self.LEFT or \
+                self.mask == self.UP_LEFT or \
+                self.mask == self.DOWN_LEFT or \
+                self.mask == self.UP_DOWN_LEFT or \
+                self.mask == self.LEFT_RIGHT or \
+                self.mask == self.UP_LEFT_RIGHT or \
+                self.mask == self.DOWN_LEFT_RIGHT or \
+                self.mask == self.UP_DOWN_LEFT_RIGHT
+    
+    def is_right(self):
+        return self.mask == self.RIGHT or \
+                self.mask == self.UP_RIGHT or \
+                self.mask == self.DOWN_RIGHT or \
+                self.mask == self.UP_DOWN_RIGHT or \
+                self.mask == self.LEFT_RIGHT or \
+                self.mask == self.UP_LEFT_RIGHT or \
+                self.mask == self.DOWN_LEFT_RIGHT or \
+                self.mask == self.UP_DOWN_LEFT_RIGHT
+
+    def is_z(self):
+        return (self.special_mask & self.Z) > 0
+    
+    def is_x(self):
+        return (self.special_mask & self.X) > 0
+    
+    def is_c(self):
+        return (self.c_mask & self.C) > 0
+    
+    def is_shift(self):
+        return (self.special_mask & self.SHIFT) > 0
+
 
 oldwork_magicnumber_flc = {
     0x50523654: '06',
