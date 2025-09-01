@@ -670,7 +670,7 @@ def threp_output(info, work):
                         #if left_hand_flag == 8:
                             #output['shift_frame'].append(total_frame_count)
                     if work not in ['10'] and (left_hand_flag & 8) > 0 and (left_hand_flag & 4) <= 0:
-                        print("clipping flag &8 to |4|8")
+                        #print("clipping flag &8 to |4|8")
                         left_hand_flag |= 4
                     output['actions'].append((total_frame_count, FrameKey(framekey, left_hand_flag, c_flag)))
                     
