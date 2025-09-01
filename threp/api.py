@@ -1,5 +1,4 @@
 from threp.decode import load
-from threp.static import FrameKey
 
 class THReplay:
     def __init__(self, replay_file):
