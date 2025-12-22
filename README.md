@@ -4,6 +4,8 @@
 
 ![CodeFactor](https://www.codefactor.io/repository/github/wasupandceacar/threp/badge)
 
+## Migrated to [Codeberg](https://codeberg.org/ryi3r/threp)
+
 一、介绍
 ---------
 threp 用于解析东方 project 系列游戏的 replay 文件，即游戏回放文件，可以获取 replay 文件的通关情况、机师、难度、通关情况、机体、处理落、日期、屏幕移动、按键记录。
