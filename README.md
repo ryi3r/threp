@@ -4,7 +4,7 @@
 
 ![CodeFactor](https://www.codefactor.io/repository/github/wasupandceacar/threp/badge)
 
-## Migrated to [Codefloe](https://codefloe.com/ryi3r/threp)
+## Migrated to [Self-Hosted Forgejo](https://git.crystal-server.co/ryi3r/threp)
 
 一、介绍
 ---------
